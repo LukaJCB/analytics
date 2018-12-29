@@ -15,10 +15,10 @@ import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future}
 import scala.util.Try
 
-class DefaultScheduler[A](val callback: Either[Throwable, A] => Unit,
+
+class DefaultScheduler[A](val callback: Either[Throwable, Option[A]] => Unit,
                           val fold: DatasetFoldProgram[A],
-                          val ops: DatasetOpProgram[Unit, A],
-                          val init: A)(implicit A: Decoder[A])
+                          val ops: DatasetOpProgram[Unit, A])(implicit A: Decoder[A])
     extends Scheduler
     with TaskUtils {
 
@@ -26,7 +26,6 @@ class DefaultScheduler[A](val callback: Either[Throwable, A] => Unit,
     .createPayloads(ops(DatasetOp.allSources).getConst).compile.to[Iterator].unsafeRunSync()
   private var tasksCreated = 0
   private var tasksRunning = 0
-  private var result = init
   private var shuttingDown: Boolean = false
 
 
@@ -79,14 +78,7 @@ class DefaultScheduler[A](val callback: Either[Throwable, A] => Unit,
       case id if id == defaultExecutor.getExecutorId.getValue =>
         val decoded = decode[A](jsonString)
 
-        decoded match {
-          case Right(n) =>
-            result = fold(Interpreters.foldInterp)(result, n)
-          case Left(e) =>
-            fail(e, driver).unsafeRunSync()
-
-        }
-
+        callback(decoded.map(Some(_)))
       case _ => ()
     }
   }
@@ -107,17 +99,12 @@ class DefaultScheduler[A](val callback: Either[Throwable, A] => Unit,
 
 
   def finish(driver: SchedulerDriver): IO[Unit] = IO {
-    callback(Right(result))
+    callback(Right(None))
     driver.stop()
     ()
   }
 
 
-  def fail(err: Exception, driver: SchedulerDriver): IO[Unit] = IO {
-    callback(Left(err))
-    driver.abort()
-    ()
-  }
 
   def reregistered(
     driver: SchedulerDriver,
@@ -138,8 +125,9 @@ class DefaultScheduler[A](val callback: Either[Throwable, A] => Unit,
       else {
         val maxTasks = maxTasksForOffer(offer)
 
-        def createPayload(pl: Map[Int, SourcePair]) = TaskPayload(
+        def createPayload(pl: Map[Int, SourcePair], id: Int) = TaskPayload(
           pl,
+          id,
           ops(DatasetOp.free).getConst,
           fold(DatasetFold.free).getConst,
           Type[Unit].reify,
@@ -149,7 +137,7 @@ class DefaultScheduler[A](val callback: Either[Throwable, A] => Unit,
         val tasks = tasksCreated.until(tasksCreated + maxTasks).toList.mapFilter { n =>
           if (iterator.hasNext) {
             val next = iterator.next()
-            Some(makeDefaultTask(s"$n", createPayload(next), offer))
+            Some(makeDefaultTask(s"$n", createPayload(next, n), offer))
           }
           else None
         }

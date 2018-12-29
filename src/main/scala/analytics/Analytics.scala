@@ -1,26 +1,37 @@
 package analytics
 
-import analytics.mesos.DefaultScheduler
 import cats.effect.{ContextShift, IO}
+import cats.implicits._
 import io.circe.Decoder
-import org.apache.mesos._
+import fs2.Stream
+import fs2.concurrent.Queue
 
-import scala.concurrent.duration._
 
 object Analytics {
-  def createMesosJob[A: Decoder](ops: DatasetOpProgram[Unit, A],
-                                 fold: DatasetFoldProgram[A],
-                                 init: A,
-                                 frameworkInfo: Protos.FrameworkInfo,
-                                 mesosMaster: String)
-                                (implicit ctx: ContextShift[IO]): IO[A] =
-    IO.cancelable { k =>
-      val scheduler = new DefaultScheduler[A](k, fold, ops, init)
-      val driver: SchedulerDriver =
-        new MesosSchedulerDriver(scheduler, frameworkInfo, mesosMaster)
-      IO(driver.run()).start.unsafeRunAsyncAndForget()
 
-      IO(scheduler.shutdown(5.minutes) { driver.stop(); () })
+  def createResultStream[A: Decoder](ops: DatasetOpProgram[Unit, A],
+                                     fold: DatasetFoldProgram[A],
+                                     runner: AnalyticsRunner)(implicit ctx: ContextShift[IO]): Stream[IO, A] = {
+
+
+    val startDriver: IO[Queue[IO, Either[Throwable, Option[A]]]] =
+      Queue.unbounded[IO, Either[Throwable, Option[A]]]
+        .flatTap(queue => runner.run(ops, fold)(e => queue.enqueue1(e).unsafeRunAsyncAndForget()))
+
+    Stream.eval(startDriver).flatMap(_.dequeue.rethrow.unNoneTerminate)
+
+  }
+
+
+  type Data[A] = DatasetOpProgram[Unit, A]
+
+
+
+  implicit class DSLSyntax[A: Type](data: Data[A]) {
+    def map[B: Type](f: Fn[A, A] => Fn[A, B]): Data[B] = new DatasetOpProgram[Unit, B] {
+      def apply[F[_, _]](F: DatasetOp[F]): F[Unit, B] =
+        F.compose(data(F), F.fmap(f(Fn.Identity())))
     }
+  }
 
 }

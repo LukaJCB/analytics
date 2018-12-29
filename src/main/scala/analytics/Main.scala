@@ -1,7 +1,9 @@
 package analytics
 
 import analytics.DatasetSource.HDFSSource
+import analytics.mesos.MesosRunner
 import cats.effect.IO
+import cats.implicits._
 import org.apache.hadoop.fs.Path
 import org.apache.mesos._
 
@@ -68,8 +70,11 @@ object Main {
 
     implicit val ctx = IO.contextShift(global)
 
-    val cancelToken = Analytics.createMesosJob(opProgram, foldProgram, 0, frameworkInfo, mesosMaster)
-        .unsafeRunCancelable(eta => println("Result: " + eta))
+    val mesosRunner = MesosRunner(frameworkInfo, mesosMaster)
+
+    val cancelToken = Analytics.createResultStream(opProgram, foldProgram, mesosRunner)
+      .compile.foldMonoid
+      .unsafeRunCancelable(eta => println("Result: " + eta))
 
 
     val newLine = '\n'.toInt

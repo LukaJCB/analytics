@@ -43,6 +43,9 @@ object Interpreters {
 
     def commutativeFold[A: Type : CommutativeMonoidFn]: Stream[IO, A] => IO[A] =
       _.compile.fold(MonoidFn[A].empty)((x, y) => Fn.interpret(MonoidFn[A].combine)((x, y)))
+
+    def commutativeScan[A: Type : CommutativeMonoidFn]: Stream[IO, A] => IO[A] =
+      _.compile.fold(MonoidFn[A].empty)((x, y) => Fn.interpret(MonoidFn[A].combine)((x, y)))
   }
 
   type Fold[A] = (A, A) => A
@@ -52,6 +55,9 @@ object Interpreters {
       Function.untupled(Fn.interpret(MonoidFn[A].combine))
 
     def commutativeFold[A: Type: CommutativeMonoidFn]: Fold[A] =
+      Function.untupled(Fn.interpret(CommutativeMonoidFn[A].combine))
+
+    def commutativeScan[A: Type : CommutativeMonoidFn]: Fold[A] =
       Function.untupled(Fn.interpret(CommutativeMonoidFn[A].combine))
   }
 
