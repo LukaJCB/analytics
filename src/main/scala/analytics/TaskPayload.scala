@@ -1,8 +1,7 @@
-package analytics.mesos
+package analytics
 
 import analytics.DatasetFold.RDatasetFold
 import analytics.DatasetOp.RDataSetOp
-import analytics.{Reified, SourcePair}
 import io.circe.{Decoder, Encoder}
 import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
 

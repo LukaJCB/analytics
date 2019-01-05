@@ -3,15 +3,12 @@ package analytics.mesos.executor
 import java.nio.charset.Charset
 
 import analytics._
-import analytics.mesos.TaskPayload
 import cats.implicits._
 import cats.effect.IO
 import io.circe.parser.decode
 import io.circe.Encoder
 import org.apache.mesos.{Executor, ExecutorDriver, Protos}
 import org.apache.mesos.Protos.{TaskState, TaskStatus}
-
-
 
 object DefaultExecutor extends Executor {
   def registered(driver: ExecutorDriver, executorInfo: Protos.ExecutorInfo, frameworkInfo: Protos.FrameworkInfo, slaveInfo: Protos.SlaveInfo): Unit =

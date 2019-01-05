@@ -1,5 +1,6 @@
 package analytics.mesos
 
+import analytics.TaskPayload
 import com.google.protobuf.ByteString
 import io.circe.syntax._
 import org.apache.mesos._
@@ -15,7 +16,7 @@ trait TaskUtils {
 
   val uris: Seq[Protos.CommandInfo.URI] =
     Seq(
-      System.getProperty("user.dir") + "/target/scala-2.12/analytics-assembly-0.1.0.jar",
+      System.getProperty("user.dir") + "/../mesos/target/scala-2.12/analytics-mesos-assembly-0.1.0.jar",
       System.getProperty("user.dir") + "/enwik9"
     ).map {
         fName =>
@@ -47,7 +48,7 @@ trait TaskUtils {
 
   lazy val defaultExecutor: Protos.ExecutorInfo = {
     val command = Protos.CommandInfo.newBuilder
-      .setValue("java -cp analytics-assembly-0.1.0.jar analytics.mesos.executor.DefaultExecutorMain")
+      .setValue("java -cp analytics-mesos-assembly-0.1.0.jar analytics.mesos.executor.DefaultExecutorMain")
       .addAllUris(uris.asJava)
     Protos.ExecutorInfo.newBuilder
       .setExecutorId(Protos.ExecutorID.newBuilder.setValue("default-executor"))

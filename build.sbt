@@ -9,21 +9,35 @@ val fs2Version = "1.0.0"
 val pathToMesosLibs = "/usr/local/lib"
 
 lazy val root = project.in(file("."))
-    .settings(commonSettings)
+  .settings(commonSettings)
+  .settings(name := "analytics")
 
-lazy val commonSettings = Defaults.coreDefaultSettings ++
-  basicSettings
+lazy val analyticsMesos = project.in(file("mesos"))
+  .settings(commonSettings)
+  .settings(analyticsMesosSettings)
+  .settings(name := "analytics-mesos")
+  .dependsOn(root)
 
-lazy val basicSettings = Seq(
+lazy val example = project.in(file("example"))
+  .settings(commonSettings)
+  .settings(analyticsMesosSettings)
+  .dependsOn(analyticsMesos)
+
+lazy val analyticsMesosSettings = Seq(
+  libraryDependencies ++= Seq(
+    "org.apache.mesos" % "mesos" % mesosVersion
+  ),
+  javaOptions += "-Djava.library.path=%s:%s".format(
+    sys.props("java.library.path"),
+    pathToMesosLibs
+  ),
+)
+
+lazy val commonSettings = Seq(
   name := "analytics",
   version := analyticsVersion,
   scalaVersion := "2.12.8",
-
-  resolvers += "Typesafe Repository" at
-    "http://repo.typesafe.com/typesafe/releases/",
-
   libraryDependencies ++= Seq(
-    "org.apache.mesos" % "mesos" % mesosVersion,
     "org.apache.hadoop" % "hadoop-client" % hadoopVersion,
     "org.apache.hadoop" % "hadoop-hdfs" % hadoopVersion,
     "co.fs2" %% "fs2-core" % fs2Version,
@@ -48,14 +62,9 @@ lazy val basicSettings = Seq(
   ),
   addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.6"),
   addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.2.2"),
-  javaOptions += "-Djava.library.path=%s:%s".format(
-    sys.props("java.library.path"),
-    pathToMesosLibs
-  ),
 
   connectInput in run := true,
 
   fork in run := true,
-
   fork in Test := true
 )

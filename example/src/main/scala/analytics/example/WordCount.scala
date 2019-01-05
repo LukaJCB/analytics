@@ -1,5 +1,6 @@
-package analytics
+package analytics.example
 
+import analytics._
 import analytics.DatasetSource.HDFSSource
 import analytics.mesos.MesosRunner
 import cats.effect.IO
@@ -9,14 +10,14 @@ import org.apache.mesos._
 import scala.concurrent.ExecutionContext.global
 import scala.concurrent.duration._
 
-object Main {
+object WordCount {
 
   lazy val frameworkInfo: Protos.FrameworkInfo =
     Protos.FrameworkInfo.newBuilder
       .setName("ANALYTICS")
       .setFailoverTimeout(60.seconds.toMillis)
       .setCheckpoint(false)
-      .setUser("") // Mesos can do this for us
+      .setUser("")
       .build
 
   def printUsage(): Unit = {
