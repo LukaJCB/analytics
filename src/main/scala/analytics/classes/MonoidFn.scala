@@ -9,6 +9,11 @@ trait MonoidFn[A] {
 
 object MonoidFn {
   def apply[A: MonoidFn]: MonoidFn[A] = implicitly
+
+  def create[A](c: (A, A) Fn A, e: A): MonoidFn[A] = new MonoidFn[A] {
+    def combine: Fn[(A, A), A] = c
+    def empty: A = e
+  }
 }
 
 trait CommutativeMonoidFn[A] extends MonoidFn[A]
@@ -21,4 +26,9 @@ object CommutativeMonoidFn {
   }
 
   def apply[A: CommutativeMonoidFn]: CommutativeMonoidFn[A] = implicitly
+
+  def create[A](c: (A, A) Fn A, e: A): CommutativeMonoidFn[A] = new CommutativeMonoidFn[A] {
+    def combine: Fn[(A, A), A] = c
+    def empty: A = e
+  }
 }

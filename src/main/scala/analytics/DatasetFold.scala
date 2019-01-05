@@ -28,17 +28,21 @@ object DatasetFold {
   }
 
   def free: DatasetFold[Const[RDatasetFold, ?]] = new DatasetFold[Const[RDatasetFold, ?]] {
+
+    def create[A: Type: MonoidFn, F](f: (Json, Json) => F): Const[F, A] =
+      Const(f(MonoidFn[A].combine.asJson, Type.typeAEncoder[A].apply(MonoidFn[A].empty)))
+
     def fold[A: Type: MonoidFn]: Const[RDatasetFold, A] =
-      Const(Fold(MonoidFn[A].combine.asJson, Type.typeAEncoder[A].apply(MonoidFn[A].empty)))
+      create(Fold)
 
     def scan[A: Type: MonoidFn]: Const[RDatasetFold, A] =
-      Const(Scan(MonoidFn[A].combine.asJson, Type.typeAEncoder[A].apply(MonoidFn[A].empty)))
+      create(Scan)
 
     def commutativeFold[A: Type: CommutativeMonoidFn]: Const[RDatasetFold, A] =
-      Const(CommutativeFold(MonoidFn[A].combine.asJson, Type.typeAEncoder[A].apply(MonoidFn[A].empty)))
+      create(CommutativeFold)
 
     def commutativeScan[A: Type: CommutativeMonoidFn]: Const[RDatasetFold, A] =
-      Const(CommutativeScan(MonoidFn[A].combine.asJson, Type.typeAEncoder[A].apply(MonoidFn[A].empty)))
+      create(CommutativeScan)
   }
 
   def unfree[A](rd: RDatasetFold, tpe: Reified): DatasetFoldProgramErr[A] = new DatasetFoldProgramErr[A] {
@@ -46,39 +50,21 @@ object DatasetFold {
 
       implicit val anyType: Type[A] = Type.typeFromReified(tpe)
 
+      def decodeWith(combine: Json, init: Json, constructor: (Fn[(A, A), A], A) => F[A]): Either[AnalyticsError, F[A]] =
+        Decoder[(A, A) Fn A].decodeJson(combine).leftMap(DecodingErr).flatMap(f =>
+          anyType.decoder.decodeJson(init)
+            .bimap(DecodingErr, (i => constructor(f, i))))
+
+
       rd match {
-        case Fold(d, i) => Decoder[(A, A) Fn A].decodeJson(d).leftMap(DecodingErr).flatMap { f =>
-          anyType.decoder.decodeJson(i).bimap(DecodingErr, { init =>
-            F.fold[A](anyType, new MonoidFn[A] {
-              def combine: Fn[(A, A), A] = f
-              def empty: A = init
-            })
-          })
-        }
-        case CommutativeFold(d, i) => Decoder[(A, A) Fn A].decodeJson(d).leftMap(DecodingErr).flatMap { f =>
-          anyType.decoder.decodeJson(i).bimap(DecodingErr, { init =>
-            F.fold[A](anyType, new CommutativeMonoidFn[A] {
-              def combine: Fn[(A, A), A] = f
-              def empty: A = init
-            })
-          })
-        }
-        case CommutativeScan(d, i) => Decoder[(A, A) Fn A].decodeJson(d).leftMap(DecodingErr).flatMap { f =>
-          anyType.decoder.decodeJson(i).bimap(DecodingErr, { init =>
-            F.commutativeScan[A](anyType, new CommutativeMonoidFn[A] {
-              def combine: Fn[(A, A), A] = f
-              def empty: A = init
-            })
-          })
-        }
-        case Scan(d, i) => Decoder[(A, A) Fn A].decodeJson(d).leftMap(DecodingErr).flatMap { f =>
-          anyType.decoder.decodeJson(i).bimap(DecodingErr, { init =>
-            F.scan[A](anyType, new MonoidFn[A] {
-              def combine: Fn[(A, A), A] = f
-              def empty: A = init
-            })
-          })
-        }
+        case Fold(c, i) =>
+          decodeWith(c, i, ((fn, init) => F.fold[A](anyType, MonoidFn.create(fn, init))))
+        case CommutativeFold(c, i) =>
+          decodeWith(c, i, ((fn, init) => F.commutativeFold[A](anyType, CommutativeMonoidFn.create(fn, init))))
+        case CommutativeScan(c, i) =>
+          decodeWith(c, i, ((fn, init) => F.commutativeScan[A](anyType, CommutativeMonoidFn.create(fn, init))))
+        case Scan(c, i) =>
+          decodeWith(c, i, ((fn, init) => F.scan[A](anyType, CommutativeMonoidFn.create(fn, init))))
       }
 
     }
