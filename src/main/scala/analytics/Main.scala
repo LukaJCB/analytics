@@ -3,7 +3,6 @@ package analytics
 import analytics.DatasetSource.HDFSSource
 import analytics.mesos.MesosRunner
 import cats.effect.IO
-import cats.implicits._
 import org.apache.hadoop.fs.Path
 import org.apache.mesos._
 
@@ -72,8 +71,7 @@ object Main {
 
     val mesosRunner = MesosRunner(frameworkInfo, mesosMaster)
 
-    val cancelToken = Analytics.createResultStream(opProgram, foldProgram, mesosRunner)
-      .compile.foldMonoid
+    val cancelToken = Analytics.runBounded(opProgram, foldProgram, mesosRunner)
       .unsafeRunCancelable(eta => println("Result: " + eta))
 
 

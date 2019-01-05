@@ -35,10 +35,51 @@ object Interpreters {
         y.compose((s: Stream[IO, (A, C)]) => s.map(_._2))(stream)).tupled
   }
 
+
+  type TaggedStreamFold[A] = Stream[IO, (A, BigInt)] => IO[A]
+
+
+  def masterStreamFoldInterp: DatasetFold[TaggedStreamFold] = new DatasetFold[TaggedStreamFold] {
+    def fold[A: Type: MonoidFn]: Stream[IO, (A, BigInt)] => IO[A] = stream =>
+      StreamOps.reorderResults(stream)
+        .compile
+        .fold(MonoidFn[A].empty)((x, y) => Fn.interpret(MonoidFn[A].combine)((x, y)))
+
+    def scan[A: Type : MonoidFn]: TaggedStreamFold[A] =
+      _ => IO.raiseError(new Exception("Not a bounded operation"))
+
+    def commutativeFold[A: Type: CommutativeMonoidFn]: Stream[IO, (A, BigInt)] => IO[A] =
+      _.map(_._1).compile.fold(MonoidFn[A].empty)((x, y) => Fn.interpret(MonoidFn[A].combine)((x, y)))
+
+    def commutativeScan[A: Type: CommutativeMonoidFn]: Stream[IO, (A, BigInt)] => IO[A] =
+      _ => IO.raiseError(new Exception("Not a bounded operation"))
+  }
+
+  type StreamScan[A] = Stream[IO, (A, BigInt)] => Stream[IO, A]
+
+  def masterStreamScanInterp: DatasetFold[StreamScan] = new DatasetFold[StreamScan] {
+    def fold[A: Type: MonoidFn]: StreamScan[A] = stream =>
+      StreamOps.reorderResults(stream)
+        .fold(MonoidFn[A].empty)((x, y) => Fn.interpret(MonoidFn[A].combine)((x, y)))
+
+    def scan[A: Type : MonoidFn]: StreamScan[A] = stream =>
+      StreamOps.reorderResults(stream)
+        .scan(MonoidFn[A].empty)((x, y) => Fn.interpret(MonoidFn[A].combine)((x, y)))
+
+    def commutativeFold[A: Type: CommutativeMonoidFn]: StreamScan[A] = stream =>
+      stream.map(_._1).fold(MonoidFn[A].empty)((x, y) => Fn.interpret(MonoidFn[A].combine)((x, y)))
+
+    def commutativeScan[A: Type: CommutativeMonoidFn]: StreamScan[A] = stream =>
+      stream.map(_._1).scan(MonoidFn[A].empty)((x, y) => Fn.interpret(MonoidFn[A].combine)((x, y)))
+  }
+
   type StreamFold[A] = Stream[IO, A] => IO[A]
 
-  def fs2FoldInterp: DatasetFold[StreamFold] = new DatasetFold[StreamFold] {
+  def agentStreamFoldInterp: DatasetFold[StreamFold] = new DatasetFold[StreamFold] {
     def fold[A: Type : MonoidFn]: Stream[IO, A] => IO[A] =
+      _.compile.fold(MonoidFn[A].empty)((x, y) => Fn.interpret(MonoidFn[A].combine)((x, y)))
+
+    def scan[A: Type : MonoidFn]: StreamFold[A] =
       _.compile.fold(MonoidFn[A].empty)((x, y) => Fn.interpret(MonoidFn[A].combine)((x, y)))
 
     def commutativeFold[A: Type : CommutativeMonoidFn]: Stream[IO, A] => IO[A] =
@@ -48,24 +89,12 @@ object Interpreters {
       _.compile.fold(MonoidFn[A].empty)((x, y) => Fn.interpret(MonoidFn[A].combine)((x, y)))
   }
 
-  type Fold[A] = (A, A) => A
-
-  def foldInterp: DatasetFold[Fold] = new DatasetFold[Fold] {
-    def fold[A: Type: MonoidFn]: Fold[A] =
-      Function.untupled(Fn.interpret(MonoidFn[A].combine))
-
-    def commutativeFold[A: Type: CommutativeMonoidFn]: Fold[A] =
-      Function.untupled(Fn.interpret(CommutativeMonoidFn[A].combine))
-
-    def commutativeScan[A: Type : CommutativeMonoidFn]: Fold[A] =
-      Function.untupled(Fn.interpret(CommutativeMonoidFn[A].combine))
-  }
 
 
   def decode[A](rd: RDataSetOp, rf: RDatasetFold, tpeA: Reified, tpeB: Reified)
                (interp: DatasetOp[Pipe[IO, ?, ?]]): Either[AnalyticsError, IO[A]] =
     DatasetOp.unfree[Any, A](rd, tpeA, tpeB).apply[Pipe[IO, ?, ?]](interp).flatMap(pipe =>
-      DatasetFold.unfree[A](rf, tpeB).apply[StreamFold](fs2FoldInterp).map(streamFold =>
+      DatasetFold.unfree[A](rf, tpeB).apply[StreamFold](agentStreamFoldInterp).map(streamFold =>
         streamFold(
           pipe(Stream[IO, Unit](()))
         )

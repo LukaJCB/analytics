@@ -47,7 +47,7 @@ lazy val basicSettings = Seq(
     "-Ywarn-value-discard"
   ),
   addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.6"),
-
+  addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.2.2"),
   javaOptions += "-Djava.library.path=%s:%s".format(
     sys.props("java.library.path"),
     pathToMesosLibs

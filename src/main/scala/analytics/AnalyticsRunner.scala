@@ -6,5 +6,5 @@ import io.circe.Decoder
 trait AnalyticsRunner {
   def run[A: Decoder](ops: DatasetOpProgram[Unit, A],
                       fold: DatasetFoldProgram[A])
-                     (cb: Either[Throwable, Option[A]] => Unit): IO[Unit]
+                     (cb: Either[Throwable, Option[(A, BigInt)]] => Unit): IO[Unit]
 }

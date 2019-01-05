@@ -16,7 +16,7 @@ import scala.concurrent.{Await, Future}
 import scala.util.Try
 
 
-class DefaultScheduler[A](val callback: Either[Throwable, Option[A]] => Unit,
+class DefaultScheduler[A](val callback: Either[Throwable, Option[(A, BigInt)]] => Unit,
                           val fold: DatasetFoldProgram[A],
                           val ops: DatasetOpProgram[Unit, A])(implicit A: Decoder[A])
     extends Scheduler
@@ -24,7 +24,7 @@ class DefaultScheduler[A](val callback: Either[Throwable, Option[A]] => Unit,
 
   private val iterator = DatasetSource
     .createPayloads(ops(DatasetOp.allSources).getConst).compile.to[Iterator].unsafeRunSync()
-  private var tasksCreated = 0
+  private var tasksCreated = BigInt(0)
   private var tasksRunning = 0
   private var shuttingDown: Boolean = false
 
@@ -76,7 +76,7 @@ class DefaultScheduler[A](val callback: Either[Throwable, Option[A]] => Unit,
 
     executorId.getValue match {
       case id if id == defaultExecutor.getExecutorId.getValue =>
-        val decoded = decode[A](jsonString)
+        val decoded = decode[(A, BigInt)](jsonString)
 
         callback(decoded.map(Some(_)))
       case _ => ()
@@ -125,7 +125,7 @@ class DefaultScheduler[A](val callback: Either[Throwable, Option[A]] => Unit,
       else {
         val maxTasks = maxTasksForOffer(offer)
 
-        def createPayload(pl: Map[Int, SourcePair], id: Int) = TaskPayload(
+        def createPayload(pl: Map[Int, SourcePair], id: BigInt) = TaskPayload(
           pl,
           id,
           ops(DatasetOp.free).getConst,

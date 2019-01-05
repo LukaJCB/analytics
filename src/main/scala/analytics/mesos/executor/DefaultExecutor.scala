@@ -7,6 +7,7 @@ import analytics.mesos.TaskPayload
 import cats.implicits._
 import cats.effect.IO
 import io.circe.parser.decode
+import io.circe.Encoder
 import org.apache.mesos.{Executor, ExecutorDriver, Protos}
 import org.apache.mesos.Protos.{TaskState, TaskStatus}
 
@@ -33,7 +34,7 @@ object DefaultExecutor extends Executor {
           .fs2Interp(p.data)).traverse(io =>
 
           io.map(payload =>
-            Type.typeAEncoder.apply(payload).noSpaces.getBytes)
+            Encoder.encodeTuple2(anyType.encoder, Encoder[BigInt]).apply(payload -> p.id).noSpaces.getBytes)
         )
       }
     result.flatMap {

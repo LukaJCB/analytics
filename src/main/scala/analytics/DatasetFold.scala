@@ -9,6 +9,7 @@ import io.circe.syntax._
 
 trait DatasetFold[F[_]] {
   def fold[A: Type: MonoidFn]: F[A]
+  def scan[A: Type: MonoidFn]: F[A]
   def commutativeFold[A: Type: CommutativeMonoidFn]: F[A]
   def commutativeScan[A: Type: CommutativeMonoidFn]: F[A]
 }
@@ -16,6 +17,7 @@ trait DatasetFold[F[_]] {
 object DatasetFold {
   sealed trait RDatasetFold
   case class Fold(f: Json, init: Json) extends RDatasetFold
+  case class Scan(f: Json, init: Json) extends RDatasetFold
   case class CommutativeFold(f: Json, init: Json) extends RDatasetFold
   case class CommutativeScan(f: Json, init: Json) extends RDatasetFold
 
@@ -28,6 +30,9 @@ object DatasetFold {
   def free: DatasetFold[Const[RDatasetFold, ?]] = new DatasetFold[Const[RDatasetFold, ?]] {
     def fold[A: Type: MonoidFn]: Const[RDatasetFold, A] =
       Const(Fold(MonoidFn[A].combine.asJson, Type.typeAEncoder[A].apply(MonoidFn[A].empty)))
+
+    def scan[A: Type: MonoidFn]: Const[RDatasetFold, A] =
+      Const(Scan(MonoidFn[A].combine.asJson, Type.typeAEncoder[A].apply(MonoidFn[A].empty)))
 
     def commutativeFold[A: Type: CommutativeMonoidFn]: Const[RDatasetFold, A] =
       Const(CommutativeFold(MonoidFn[A].combine.asJson, Type.typeAEncoder[A].apply(MonoidFn[A].empty)))
@@ -61,6 +66,14 @@ object DatasetFold {
         case CommutativeScan(d, i) => Decoder[(A, A) Fn A].decodeJson(d).leftMap(DecodingErr).flatMap { f =>
           anyType.decoder.decodeJson(i).bimap(DecodingErr, { init =>
             F.commutativeScan[A](anyType, new CommutativeMonoidFn[A] {
+              def combine: Fn[(A, A), A] = f
+              def empty: A = init
+            })
+          })
+        }
+        case Scan(d, i) => Decoder[(A, A) Fn A].decodeJson(d).leftMap(DecodingErr).flatMap { f =>
+          anyType.decoder.decodeJson(i).bimap(DecodingErr, { init =>
+            F.scan[A](anyType, new MonoidFn[A] {
               def combine: Fn[(A, A), A] = f
               def empty: A = init
             })
