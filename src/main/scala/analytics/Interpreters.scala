@@ -91,7 +91,7 @@ object Interpreters {
 
 
 
-  def decode[A](rd: RDataSetOp, rf: RDatasetFold, tpeA: Reified, tpeB: Reified)
+  def decode[A](rd: RDataSetOp, rf: RDatasetFold, tpeA: Schema, tpeB: Schema)
                (interp: DatasetOp[Pipe[IO, ?, ?]]): Either[AnalyticsError, IO[A]] =
     DatasetOp.unfree[Any, A](rd, tpeA, tpeB).apply[Pipe[IO, ?, ?]](interp).flatMap(pipe =>
       DatasetFold.unfree[A](rf, tpeB).apply[StreamFold](agentStreamFoldInterp).map(streamFold =>

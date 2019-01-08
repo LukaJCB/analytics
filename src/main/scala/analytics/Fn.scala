@@ -27,6 +27,9 @@ object Fn {
   case class Merge[A, B, C](f: Fn[A, B], g: Fn[A, C]) extends Fn[A, (B, C)]
   case class Choice[A, B, C](f: Fn[A, C], g: Fn[B, C]) extends Fn[Either[A, B], C]
   case class Literal[A, B](b: B, typeB: Type[B]) extends Fn[A, B]
+  private case class FromIso[A, B]() extends Fn[A, B]
+
+  def fromIso[A: Type, B: Type](f: A => B, g: B => A): Fn[A, B] = FromIso[A, B]
 
   def interpret[A, B](fn: Fn[A, B]): A => B = fn match {
     case Plus => (t: (Int, Int)) => t._1 + t._2
@@ -45,6 +48,7 @@ object Fn {
     case Second(fab) => t => (t._1, interpret(fab)(t._2))
     case Merge(f, g) => a => (interpret(f)(a), interpret(g)(a))
     case Literal(b, _) => _ => b
+    case FromIso() => a => a.asInstanceOf[B]
     case Choice(f, g) => {
       case Left(a) => interpret(f)(a)
       case Right(b) => interpret(g)(b)
@@ -102,6 +106,8 @@ object Fn {
       case Literal(b, tb) => Json.obj(
         "type" -> Json.fromString("Literal"),
         "b" -> Type.typeAEncoder(tb).apply(b))
+      case FromIso() => Json.obj(
+        "type" -> Json.fromString("FromIso"))
       case Uncurry(f) => Json.obj(
         "type" -> Json.fromString("Uncurry"),
         "f" -> f.asJson
@@ -120,6 +126,7 @@ object Fn {
       case "Literal" => Type[B].decoder.tryDecode(c.downField("b")).map(b => Literal(b, Type[B]))
       case "Identity" => Right(Identity()).asInstanceOf[Result[Fn[A, B]]]
       case "Split" => Right(Split).asInstanceOf[Result[Fn[A, B]]]
+      case "FromIso" => Right(FromIso[A, B])
       case "Compose" => tryDecode(c.downField("x")).flatMap(x => tryDecode(c.downField("y"))
         .map(y => ComposeFn(x.asInstanceOf[Fn[A, Any]], y.asInstanceOf[Fn[Any, B]])))
       case t => Left(DecodingFailure(s"Analytics: No recognized type: $t", List.empty))

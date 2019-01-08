@@ -7,7 +7,7 @@ import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
 
 import scala.collection.immutable.Map
 
-case class TaskPayload(data: Map[Int, SourcePair], id: BigInt, ops: RDataSetOp, fold: RDatasetFold, tpeA: Reified, tpeB: Reified)
+case class TaskPayload(data: Map[Int, SourcePair], id: BigInt, ops: RDataSetOp, fold: RDatasetFold, tpeA: Schema, tpeB: Schema)
 object TaskPayload {
   implicit def encoder: Encoder[TaskPayload] = deriveEncoder
   implicit def decoder: Decoder[TaskPayload] = deriveDecoder

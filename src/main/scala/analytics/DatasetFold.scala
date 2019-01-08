@@ -45,7 +45,7 @@ object DatasetFold {
       create(CommutativeScan)
   }
 
-  def unfree[A](rd: RDatasetFold, tpe: Reified): DatasetFoldProgramErr[A] = new DatasetFoldProgramErr[A] {
+  def unfree[A](rd: RDatasetFold, tpe: Schema): DatasetFoldProgramErr[A] = new DatasetFoldProgramErr[A] {
     def apply[F[_]](F: DatasetFold[F]): Either[AnalyticsError, F[A]] = {
 
       implicit val anyType: Type[A] = Type.typeFromReified(tpe)

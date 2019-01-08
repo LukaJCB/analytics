@@ -33,9 +33,9 @@ object DatasetOp {
   case class Filter(f: Json) extends RDataSetOp
   case class ConcatMap(f: Json) extends RDataSetOp
   case class Literal(a: Json) extends RDataSetOp
-  case class Merge(x: RDataSetOp, y: RDataSetOp, tpeA: Reified, tpeB: Reified, tpeC: Reified) extends RDataSetOp
-  case class Compose(x: RDataSetOp, y: RDataSetOp, tpeA: Reified, tpeB: Reified, tpeC: Reified) extends RDataSetOp
-  case class Split(x: RDataSetOp, y: RDataSetOp, tpeA: Reified, tpeB: Reified, tpeC: Reified, tpeD: Reified) extends RDataSetOp
+  case class Merge(x: RDataSetOp, y: RDataSetOp, tpeA: Schema, tpeB: Schema, tpeC: Schema) extends RDataSetOp
+  case class Compose(x: RDataSetOp, y: RDataSetOp, tpeA: Schema, tpeB: Schema, tpeC: Schema) extends RDataSetOp
+  case class Split(x: RDataSetOp, y: RDataSetOp, tpeA: Schema, tpeB: Schema, tpeC: Schema, tpeD: Schema) extends RDataSetOp
 
   object RDataSetOp {
     implicit def encoder: Encoder[RDataSetOp] = deriveEncoder
@@ -87,7 +87,7 @@ object DatasetOp {
         Biconst(ConcatMap(f.asJson))
     }
 
-  def unfree[A, B](rd: RDataSetOp, tpeA: Reified, tpeB: Reified): DatasetOpProgramErr[A, B] = new DatasetOpProgramErr[A, B] {
+  def unfree[A, B](rd: RDataSetOp, tpeA: Schema, tpeB: Schema): DatasetOpProgramErr[A, B] = new DatasetOpProgramErr[A, B] {
 
     implicit val typeA: Type[A] = Type.typeFromReified(tpeA)
     implicit val typeB: Type[B] = Type.typeFromReified(tpeB)
