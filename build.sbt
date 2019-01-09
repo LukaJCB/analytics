@@ -4,6 +4,7 @@ val analyticsVersion = "0.1.0"
 val mesosVersion = "0.28.2"
 val hadoopVersion = "3.1.0"
 val circeVersion = "0.10.1"
+val circeSpireVersion = "0.1.0"
 val fs2Version = "1.0.2"
 val spireVersion = "0.16.0"
 
@@ -13,15 +14,7 @@ lazy val root = project.in(file("."))
   .settings(commonSettings)
   .settings(dependencySettings)
   .settings(name := "analytics")
-  .dependsOn(circeSpire)
 
-lazy val circeSpire = project.in(file("circe-spire"))
-  .settings(commonSettings)
-  .settings(name := "circe-spire")
-  .settings(libraryDependencies ++= Seq(
-    "org.typelevel" %% "spire" % spireVersion,
-    "io.circe" %% "circe-core" % circeVersion,
-  ))
 
 lazy val analyticsMesos = project.in(file("mesos"))
   .settings(commonSettings)
@@ -51,6 +44,7 @@ lazy val dependencySettings = Seq(
     "co.fs2" %% "fs2-core" % fs2Version,
     "org.typelevel" %% "spire" % spireVersion,
     "io.circe" %% "circe-core" % circeVersion,
+    "io.circe" %% "circe-spire" % circeSpireVersion,
     "io.circe" %% "circe-generic" % circeVersion,
     "io.circe" %% "circe-parser" % circeVersion
   )

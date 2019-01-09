@@ -2,8 +2,9 @@ package analytics
 
 import analytics.classes.InvariantSemiringal
 import io.circe.{Decoder, DecodingFailure, Encoder, Json}
+import io.circe.generic.semiauto._
 import io.circe.spire._
-import spire.math.Rational
+import spire.math.{Algebraic, Natural, Polynomial, Rational}
 
 trait Type[A] {
   def reify: Schema
@@ -13,6 +14,10 @@ trait Type[A] {
 
 
 object Type {
+
+
+  implicit def y: Encoder[Polynomial[BigInt]] = ???
+  implicit def x: Encoder[Algebraic.Expr] = deriveEncoder
 
   def newType[A: Encoder: Decoder](r: Schema): Type[A] = new Type[A] {
     def reify: Schema = r
@@ -48,6 +53,7 @@ object Type {
   implicit def longType = newType[Long](Schema.Long)
   implicit def floatType = newType[Float](Schema.Float)
   implicit def doubleType = newType[Double](Schema.Double)
+  implicit def naturalType = newType[Natural](Schema.Natural)
   implicit def bigIntType = newType[BigInt](Schema.BigInt)
   implicit def rationalType = newType[Rational](Schema.Rational)
   implicit def booleanType = newType[Boolean](Schema.Boolean)
@@ -95,19 +101,20 @@ object Type {
     }
   }
 
-  def typeFromReified[A](tpe: Schema): Type[A] = (tpe match {
+  def typeFromSchema[A](tpe: Schema): Type[A] = (tpe match {
     case Schema.Int => intType
     case Schema.Long => longType
     case Schema.Float => floatType
     case Schema.Double => doubleType
+    case Schema.Natural => naturalType
     case Schema.BigInt => bigIntType
     case Schema.Rational => rationalType
     case Schema.String => stringType
     case Schema.Boolean => booleanType
     case Schema.Unit => unitType
-    case Schema.Tuple2(a, b) => tupleType(typeFromReified(a), typeFromReified(b))
-    case Schema.Either(a, b) => eitherType(typeFromReified(a), typeFromReified(b))
-    case Schema.List(a) => listType(typeFromReified(a))
+    case Schema.Tuple2(a, b) => tupleType(typeFromSchema(a), typeFromSchema(b))
+    case Schema.Either(a, b) => eitherType(typeFromSchema(a), typeFromSchema(b))
+    case Schema.List(a) => listType(typeFromSchema(a))
     case Schema.Any => imap(stringType)(s => (s: Any))(_.toString)
     case Schema.Null => nothingType
   }).asInstanceOf[Type[A]]

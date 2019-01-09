@@ -25,7 +25,7 @@ object DefaultExecutor extends Executor {
     val result: IO[Either[AnalyticsError, Array[Byte]]] = decode[TaskPayload](task.getData.toStringUtf8)
       .leftMap(CirceErr(_): AnalyticsError)
       .flatTraverse { p =>
-        implicit val anyType: Type[Any] = Type.typeFromReified(p.tpeB)
+        implicit val anyType: Type[Any] = Type.typeFromSchema(p.tpeB)
 
         Interpreters.decode[Any](p.ops, p.fold, p.tpeA, p.tpeB)(Interpreters
           .fs2Interp(p.data)).traverse(io =>

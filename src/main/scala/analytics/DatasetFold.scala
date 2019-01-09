@@ -48,7 +48,7 @@ object DatasetFold {
   def unfree[A](rd: RDatasetFold, tpe: Schema): DatasetFoldProgramErr[A] = new DatasetFoldProgramErr[A] {
     def apply[F[_]](F: DatasetFold[F]): Either[AnalyticsError, F[A]] = {
 
-      implicit val anyType: Type[A] = Type.typeFromReified(tpe)
+      implicit val anyType: Type[A] = Type.typeFromSchema(tpe)
 
       def decodeWith(combine: Json, init: Json, constructor: (Fn[(A, A), A], A) => F[A]): Either[AnalyticsError, F[A]] =
         Decoder[(A, A) Fn A].decodeJson(combine).leftMap(DecodingErr).flatMap(f =>

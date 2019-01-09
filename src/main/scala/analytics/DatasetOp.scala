@@ -89,8 +89,8 @@ object DatasetOp {
 
   def unfree[A, B](rd: RDataSetOp, tpeA: Schema, tpeB: Schema): DatasetOpProgramErr[A, B] = new DatasetOpProgramErr[A, B] {
 
-    implicit val typeA: Type[A] = Type.typeFromReified(tpeA)
-    implicit val typeB: Type[B] = Type.typeFromReified(tpeB)
+    implicit val typeA: Type[A] = Type.typeFromSchema(tpeA)
+    implicit val typeB: Type[B] = Type.typeFromSchema(tpeB)
 
     def result[F[_, _]](F: DatasetOp[F]): Either[AnalyticsError, F[A, B]] =
       rd match {
@@ -101,16 +101,16 @@ object DatasetOp {
         case ConcatMap(f) => Decoder[A Fn List[B]].decodeJson(f).bimap(DecodingErr, F.concatMap[A, B])
         case Merge(x, y, a, b, c) => unfree[Any, B](x, a, c)(F).flatMap(fx =>
           unfree[Any, B](y, b, c)(F).map(fy =>
-            F.merge(fx, fy)(Type.typeFromReified(a), Type.typeFromReified(b), typeB).asInstanceOf[F[A, B]]))
+            F.merge(fx, fy)(Type.typeFromSchema(a), Type.typeFromSchema(b), typeB).asInstanceOf[F[A, B]]))
         case Compose(x, y, a, b, c) => unfree[A, Any](x, a, b)(F).flatMap(fx =>
           unfree[Any, B](y, b, c)(F).map(fy =>
-            F.compose(fx, fy)(Type.typeFromReified(a), Type.typeFromReified(b), Type.typeFromReified(c)).asInstanceOf[F[A, B]]))
+            F.compose(fx, fy)(Type.typeFromSchema(a), Type.typeFromSchema(b), Type.typeFromSchema(c)).asInstanceOf[F[A, B]]))
         case Split(x, y, a, b, c, d) => unfree[Any, Any](x, a, b)(F).flatMap(fx =>
           unfree[Any, Any](y, c, d)(F).map(fy =>
-            F.split(fx, fy)(Type.typeFromReified(a),
-              Type.typeFromReified(b),
-              Type.typeFromReified(c),
-              Type.typeFromReified(d)).asInstanceOf[F[A, B]]))
+            F.split(fx, fy)(Type.typeFromSchema(a),
+              Type.typeFromSchema(b),
+              Type.typeFromSchema(c),
+              Type.typeFromSchema(d)).asInstanceOf[F[A, B]]))
       }
 
     def apply[F[_, _]](F: DatasetOp[F]): Either[AnalyticsError, F[A, B]] =
