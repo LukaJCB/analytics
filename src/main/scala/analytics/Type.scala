@@ -15,10 +15,6 @@ trait Type[A] {
 
 object Type {
 
-
-  implicit def y: Encoder[Polynomial[BigInt]] = ???
-  implicit def x: Encoder[Algebraic.Expr] = deriveEncoder
-
   def newType[A: Encoder: Decoder](r: Schema): Type[A] = new Type[A] {
     def reify: Schema = r
     def encoder: Encoder[A] = Encoder[A]
@@ -54,6 +50,7 @@ object Type {
   implicit def floatType = newType[Float](Schema.Float)
   implicit def doubleType = newType[Double](Schema.Double)
   implicit def naturalType = newType[Natural](Schema.Natural)
+  implicit def algebraicType = newType[Algebraic](Schema.Algebraic)
   implicit def bigIntType = newType[BigInt](Schema.BigInt)
   implicit def rationalType = newType[Rational](Schema.Rational)
   implicit def booleanType = newType[Boolean](Schema.Boolean)
@@ -109,6 +106,7 @@ object Type {
     case Schema.Natural => naturalType
     case Schema.BigInt => bigIntType
     case Schema.Rational => rationalType
+    case Schema.Algebraic => algebraicType
     case Schema.String => stringType
     case Schema.Boolean => booleanType
     case Schema.Unit => unitType
